@@ -38,7 +38,7 @@ $ cd <parent directory>
 $ unzip ~/Downloads/FreeRTOSv10.1.1.zip
 ```
 
-## Git commnands
+## Git Commands
 
 $ git clone https://github.com/conner-beard/cs466_s20
 
