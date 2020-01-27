@@ -38,4 +38,15 @@ $ cd <parent directory>
 $ unzip ~/Downloads/FreeRTOSv10.1.1.zip
 ```
 
-test
+## Git commnands
+
+$ git clone https://github.com/conner-beard/cs466_s20
+
+$ git status
+
+$ git add <file_name>
+
+$ git commit -m "Commit message"
+
+$ git push -u origin master
+
