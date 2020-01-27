@@ -27,7 +27,8 @@
 #define LED_OFF(x) (GPIO_PORTF_DATA_R &= ~(x))
 #define LED(led,on) ((on)?LED_ON(led):LED_OFF(led))
 
-static SemaphoreHandle_t _semBtn = NULL;
+static SemaphoreHandle_t _semBtn1 = NULL;
+static SemaphoreHandle_t _semBtn2 = NULL;
 
 uint32_t SystemCoreClock;
 
@@ -39,12 +40,16 @@ _interruptHandlerPortF(void)
     //
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
-
     uint32_t mask = GPIOIntStatus(GPIO_PORTF_BASE, 1);
 
     if (mask & SW1)
     {
-        xSemaphoreGiveFromISR(_semBtn, &xHigherPriorityTaskWoken);
+        xSemaphoreGiveFromISR(_semBtn1, &xHigherPriorityTaskWoken);
+    }
+    
+    if (mask & SW2)
+    {       
+        xSemaphoreGiveFromISR(_semBtn2, &xHigherPriorityTaskWoken);
     }
 
     if (xHigherPriorityTaskWoken)
@@ -70,6 +75,7 @@ _setupHardware(void)
     // enable the GPIO pin for digital function.
     // These are TiveDriver library functions
     //
+
     GPIO_PORTF_LOCK_R = 0x4C4F434B; //unlock CR_R
     GPIO_PORTF_CR_R |=  SW2; //unlock SW2 (PF0)
 
@@ -121,8 +127,11 @@ _greenHeartbeat( void *notUsed)
 static void
 _redBlink( void *notUsed)
 {
-    uint32_t red500ms = 500; // 1 second
+    uint32_t red33ms = 33; 
     uint32_t ledOn = 0;
+    uint32_t blinkCount = 0;
+    uint32_t blinkActive = 0;
+
     BaseType_t semRes;
 
     //
@@ -138,7 +147,7 @@ _redBlink( void *notUsed)
     // to be very sure that the OS scheduler has started before we receive
     // any interrupts.
     //
-    _semBtn = xSemaphoreCreateBinary();
+    _semBtn1 = xSemaphoreCreateBinary();
 
     GPIOIntRegister(GPIO_PORTF_BASE, _interruptHandlerPortF);
     GPIOIntTypeSet(GPIO_PORTF_BASE, SW1, GPIO_FALLING_EDGE);
@@ -148,25 +157,38 @@ _redBlink( void *notUsed)
 
     while(true)
     {
-        semRes = xSemaphoreTake( _semBtn, 0);   // Won't block but will return
-                                                // successful if the sem was given
-                                                // for every button press the LED
-                                                // should change color.
-        if (semRes == pdPASS)
-        {
-            ledOn = !ledOn;
-            LED(LED_R, ledOn);
-        }
+        semRes = xSemaphoreTake( _semBtn1, 0);
         
-        vTaskDelay(red500ms / portTICK_RATE_MS);
+	if ((semRes == pdPASS) && (!blinkActive))
+        {
+            blinkCount = 20; //set up 20 blinks
+	    blinkCount = blinkCount*2; //20 is really 40 for the loop below
+	    blinkActive = 1;
+        }
+	
+	if (blinkCount > 0) 
+	{
+            blinkCount--;         //decrement blink count
+            ledOn = !ledOn;      //toggle ledOn
+	    LED(LED_R, (ledOn)); //send command to LED
+	}
+	else
+	{
+	    blinkActive = 0; //allow sw to start a new cycle
+	}
+
+        vTaskDelay(red33ms / portTICK_RATE_MS);
     }
 }
 
 static void
 _blueBlink( void *notUsed)
 {
-    uint32_t blue500ms = 500; // 1 second
+    uint32_t blue38ms = 38; 
     uint32_t ledOn = 0;
+    uint32_t blinkCount = 0;
+    uint32_t blinkActive = 0;
+
     BaseType_t semRes;
 
     //
@@ -182,7 +204,7 @@ _blueBlink( void *notUsed)
     // to be very sure that the OS scheduler has started before we receive
     // any interrupts.
     //
-    _semBtn = xSemaphoreCreateBinary();
+    _semBtn2 = xSemaphoreCreateBinary();
 
     GPIOIntRegister(GPIO_PORTF_BASE, _interruptHandlerPortF);
     GPIOIntTypeSet(GPIO_PORTF_BASE, SW2, GPIO_FALLING_EDGE);
@@ -192,19 +214,27 @@ _blueBlink( void *notUsed)
 
     while(true)
     {
-        //semRes = xSemaphoreTake( _semBtn, 0);   // Won't block but will return
-                                                // successful if the sem was given
-                                                // for every button press the LED
-                                                // should change color.
-        //if (semRes == pdPASS)
-        //{
-        //    LED(test, 0);
-        //}
-
-        //ledOn = !ledOn;
-        //LED(test, ledOn);
+        semRes = xSemaphoreTake( _semBtn2, 0);
         
-        vTaskDelay(blue500ms / portTICK_RATE_MS);
+	if ((semRes == pdPASS) && (!blinkActive))
+        {
+            blinkCount = 10; //set up 10 blinks
+	    blinkCount = blinkCount*2; //10 is really 20 for the loop below
+	    blinkActive = 1;
+        }
+	
+	if (blinkCount > 0) 
+	{
+            blinkCount--;        //decrement blink count
+            ledOn = !ledOn;      //toggle ledOn
+	    LED(LED_B, (ledOn)); //send command to LED
+	}
+	else
+	{
+	    blinkActive = 0; //allow sw to start a new cycle
+	}
+
+        vTaskDelay(blue38ms / portTICK_RATE_MS);
     }
 }
 
@@ -226,14 +256,14 @@ int main( void )
                 tskIDLE_PRIORITY + 1,  // higher numbers are higher priority..
                 NULL );
     
-    /*
+    
     xTaskCreate(_blueBlink,
                 "blue",
                 configMINIMAL_STACK_SIZE,
                 NULL, 
                 tskIDLE_PRIORITY + 1,  // higher numbers are higher priority..
                 NULL );
-    */
+    
 
     /* Start the tasks and timer running. */
     vTaskStartScheduler();
