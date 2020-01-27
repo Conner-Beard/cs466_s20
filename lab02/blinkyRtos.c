@@ -70,14 +70,19 @@ _setupHardware(void)
     // enable the GPIO pin for digital function.
     // These are TiveDriver library functions
     //
+    GPIO_PORTF_LOCK_R = 0x4C4F434B; //unlock CR_R
+    GPIO_PORTF_CR_R |=  SW2; //unlock SW2 (PF0)
+
     GPIOPinTypeGPIOOutput(GPIO_PORTF_BASE, (LED_G|LED_R|LED_B));
     GPIOPinTypeGPIOInput(GPIO_PORTF_BASE, SW1 );
+    GPIOPinTypeGPIOInput(GPIO_PORTF_BASE, SW2 );
 
     //
     // Set weak pull-up for switchs
     // This is a TiveDriver library function
     //
     GPIOPadConfigSet(GPIO_PORTF_BASE, SW1, GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_STD_WPU);
+    GPIOPadConfigSet(GPIO_PORTF_BASE, SW2, GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_STD_WPU);
 
 
     //
@@ -99,14 +104,26 @@ _setupHardware(void)
 }
 
 static void
-_heartbeat( void *notUsed )
+_greenHeartbeat( void *notUsed)
 {
     uint32_t green500ms = 500; // 1 second
     uint32_t ledOn = 0;
-    uint32_t led[] = {LED_G, LED_R, LED_B};
-    uint32_t ledLen = sizeof(led) / sizeof(uint32_t);
+
+    while(true)
+    {
+        ledOn = !ledOn;
+        LED(LED_G, ledOn);
+        
+        vTaskDelay(green500ms / portTICK_RATE_MS);
+    }
+}
+
+static void
+_redBlink( void *notUsed)
+{
+    uint32_t red500ms = 500; // 1 second
+    uint32_t ledOn = 0;
     BaseType_t semRes;
-    int ii = 0;
 
     //
     // Using TiveDriver Library,
@@ -137,14 +154,57 @@ _heartbeat( void *notUsed )
                                                 // should change color.
         if (semRes == pdPASS)
         {
-            LED(led[ii], 0);
-            ii = (ii+1)%ledLen;
+            ledOn = !ledOn;
+            LED(LED_R, ledOn);
         }
-
-        ledOn = !ledOn;
-        LED(led[ii], ledOn);
         
-        vTaskDelay(green500ms / portTICK_RATE_MS);
+        vTaskDelay(red500ms / portTICK_RATE_MS);
+    }
+}
+
+static void
+_blueBlink( void *notUsed)
+{
+    uint32_t blue500ms = 500; // 1 second
+    uint32_t ledOn = 0;
+    BaseType_t semRes;
+
+    //
+    // Using TiveDriver Library,
+    //
+    // Register the port-level interrupt handler. This handler is the first
+    // level interrupt handler for all the pin interrupts.
+    //
+    // Make pin B1 rising edge triggered interrupts.
+    // Enable the B pin interrupts.
+    //
+    // This is put in the low priority task startup code because we want
+    // to be very sure that the OS scheduler has started before we receive
+    // any interrupts.
+    //
+    _semBtn = xSemaphoreCreateBinary();
+
+    GPIOIntRegister(GPIO_PORTF_BASE, _interruptHandlerPortF);
+    GPIOIntTypeSet(GPIO_PORTF_BASE, SW2, GPIO_FALLING_EDGE);
+
+    IntPrioritySet(INT_GPIOF, 255);  // Required with FreeRTOS 10.1.1, 
+    GPIOIntEnable(GPIO_PORTF_BASE, SW2);
+
+    while(true)
+    {
+        //semRes = xSemaphoreTake( _semBtn, 0);   // Won't block but will return
+                                                // successful if the sem was given
+                                                // for every button press the LED
+                                                // should change color.
+        //if (semRes == pdPASS)
+        //{
+        //    LED(test, 0);
+        //}
+
+        //ledOn = !ledOn;
+        //LED(test, ledOn);
+        
+        vTaskDelay(blue500ms / portTICK_RATE_MS);
     }
 }
 
@@ -152,12 +212,28 @@ int main( void )
 {
     _setupHardware();
 
-    xTaskCreate(_heartbeat,
+    xTaskCreate(_greenHeartbeat,
                 "green",
                 configMINIMAL_STACK_SIZE,
-                NULL,
+                NULL, //parameters
                 tskIDLE_PRIORITY + 1,  // higher numbers are higher priority..
                 NULL );
+
+    xTaskCreate(_redBlink,
+                "red",
+                configMINIMAL_STACK_SIZE,
+                NULL, 
+                tskIDLE_PRIORITY + 1,  // higher numbers are higher priority..
+                NULL );
+    
+    /*
+    xTaskCreate(_blueBlink,
+                "blue",
+                configMINIMAL_STACK_SIZE,
+                NULL, 
+                tskIDLE_PRIORITY + 1,  // higher numbers are higher priority..
+                NULL );
+    */
 
     /* Start the tasks and timer running. */
     vTaskStartScheduler();
