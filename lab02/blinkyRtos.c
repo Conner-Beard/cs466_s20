@@ -127,7 +127,7 @@ _greenHeartbeat( void *notUsed)
 static void
 _redBlink( void *notUsed)
 {
-    uint32_t red33ms = 33; 
+    uint32_t red33ms = 66.66666666; 
     uint32_t ledOn = 0;
     uint32_t blinkCount = 0;
     uint32_t blinkActive = 0;
@@ -184,7 +184,7 @@ _redBlink( void *notUsed)
 static void
 _blueBlink( void *notUsed)
 {
-    uint32_t blue38ms = 38; 
+    float blue38ms = 38.4615385; 
     uint32_t ledOn = 0;
     uint32_t blinkCount = 0;
     uint32_t blinkActive = 0;
