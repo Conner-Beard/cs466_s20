@@ -38,6 +38,10 @@ $ cd <parent directory>
 $ unzip ~/Downloads/FreeRTOSv10.1.1.zip
 ```
 
+## ARM Compiler
+
+
+
 ## Git Commands
 
 $ git clone https://github.com/conner-beard/cs466_s20
@@ -49,4 +53,9 @@ $ git add <file_name>
 $ git commit -m "Commit message"
 
 $ git push -u origin master
+
+## PUTTY Terminal
+
+$ wget https://the.earth.li/~sgtatham/putty/latest/putty-0.73.tar.gz && tar zxvf putty-0.73.tar.gz && rm putty-0.73.tar.gz
+
 

@@ -1,0 +1,8 @@
+#!/bin/sh
+if  [[ $1 = "putty" ]]; then
+    echo "putty"
+elif [[ $1 = "arm" ]]; then
+    echo "arm"
+else
+    echo "none"
+fi
